@@ -1,15 +1,13 @@
-import { Card } from "./Card";
-import { Canvas, createCanvas, CanvasRenderingContext2D } from "canvas";
+import { Card, ICardOpts } from "./Card";
+import { Canvas, createCanvas } from "canvas";
 
-export interface ITextCardOpts {
-  width?: number;
-  height?: number;
-  id: string;
+export interface ITextCardOpts extends ICardOpts {
   text1: string;
   text2: string;
   text3: string;
   text4: string;
 }
+
 const DEFAULT_WIDTH = 400;
 const DEFAULT_HEIGHT = 600;
 const DEFAULT_OPTS: ITextCardOpts = {
@@ -22,15 +20,27 @@ const DEFAULT_OPTS: ITextCardOpts = {
   text4: '',
 };
 
+export const textCardSheetRange = "'TextCard Template'!A2:N1002";
+
+export const rowToTextCardOpts = (row: string[]): ITextCardOpts => {
+  return {
+    id: row[0],
+    text1: row[1],
+    text2: row[2],
+    text3: row[3],
+    text4: row[4]
+  };
+};
+
 export class TextCard extends Card {
   private opts: ITextCardOpts;
 
-  public constructor(opts?: ITextCardOpts) {
-    super(opts?.width ?? DEFAULT_WIDTH, opts?.height ?? DEFAULT_HEIGHT, opts?.id ?? DEFAULT_OPTS.id);
+  public constructor(opts: ICardOpts) {
+    super(opts);
     this.opts = Object.assign({}, DEFAULT_OPTS ,opts);
   }
 
-  private create(): Canvas {
+  protected create(): Canvas {
     const canvas = createCanvas(this.width, this.height);
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = "white";
@@ -49,11 +59,5 @@ export class TextCard extends Card {
     this.fillText(ctx, this.opts.text4 ?? '', this.x(0.5), this.y(0.125 * 7));
 
     return canvas;
-  }
-
-
-  public toBase64Png(): string {
-    const canvas = this.create();
-    return canvas.toDataURL().replace(/^data:image\/png;base64,/, "");
   }
 }
