@@ -18,7 +18,9 @@ function writeCards(cards: Card[]): void {
   }
   cards.forEach((card) => {
     const pngBase64 = card.toBase64Png();
-    fs.writeFileSync(OUTPUT_DIR + `/${card.getId()}.png`, pngBase64, 'base64');
+    for(let i = 0; i < card.getQuantity(); i++) {
+      fs.writeFileSync(OUTPUT_DIR + `/${card.getId()}-${i}.png`, pngBase64, 'base64');
+    }
   });
 
 }

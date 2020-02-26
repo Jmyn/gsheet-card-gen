@@ -18,6 +18,7 @@ const DEFAULT_OPTS: ITextCardOpts = {
   text2: '',
   text3: '',
   text4: '',
+  quantity: 1
 };
 
 export const textCardSheetRange = "'TextCard Template'!A2:N1002";
@@ -25,10 +26,11 @@ export const textCardSheetRange = "'TextCard Template'!A2:N1002";
 export const rowToTextCardOpts = (row: string[]): ITextCardOpts => {
   return {
     id: row[0],
-    text1: row[1],
-    text2: row[2],
-    text3: row[3],
-    text4: row[4]
+    text1: row[2],
+    text2: row[3],
+    text3: row[4],
+    text4: row[5],
+    quantity: parseInt(row[1])
   };
 };
 

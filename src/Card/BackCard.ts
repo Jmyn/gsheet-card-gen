@@ -16,14 +16,16 @@ const DEFAULT_OPTS: IBackCardOpts = {
   text1: '',
   backColor: 'black',
   textColor: 'white',
+  quantity: 1
 };
 
 export const rowToBackCardOpts = (row: string[]): IBackCardOpts => {
   return {
     id: row[0],
-    text1: row[1],
-    backColor: row[2],
-    textColor: row[3]
+    text1: row[2],
+    backColor: row[3],
+    textColor: row[4],
+    quantity: parseInt(row[1])
   };
 };
 

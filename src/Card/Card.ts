@@ -8,21 +8,28 @@ export interface ICardOpts {
   width?: number;
   height?: number;
   id: string;
+  quantity: number;
 }
 
 export abstract class Card {
   protected width: number;
   protected height: number;
+  protected quantity: number;
   private id: string;
 
   public constructor(opts?: ICardOpts) {
     this.width = opts?.width ?? DEFAULT_WIDTH;
     this.height = opts?.height ?? DEFAULT_HEIGHT;
     this.id = opts?.id ?? 'default_id';
+    this.quantity = opts?.quantity ?? 1;
   }
 
   public getId(): string {
     return this.id;
+  }
+
+  public getQuantity(): number {
+    return this.quantity;
   }
 
   protected abstract create(): Canvas;

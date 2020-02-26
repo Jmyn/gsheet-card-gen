@@ -19,6 +19,9 @@ interface ICardFactoryBlueprint {
   [id: string]: ICardBlueprint;
 }
 
+/**
+ * Add new Card type here
+ */
 const CardFactoryBlueprint: ICardFactoryBlueprint = {
   [CardType.TextCard]: {
     targetConstructor: TextCard,
