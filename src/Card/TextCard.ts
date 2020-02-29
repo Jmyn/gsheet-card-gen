@@ -21,7 +21,6 @@ const DEFAULT_OPTS: ITextCardOpts = {
   quantity: 1
 };
 
-export const textCardSheetRange = "'TextCard Template'!A2:N1002";
 
 export const rowToTextCardOpts = (row: string[]): ITextCardOpts => {
   return {

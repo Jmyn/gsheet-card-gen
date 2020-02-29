@@ -30,7 +30,6 @@ export const rowToBackCardOpts = (row: string[]): IBackCardOpts => {
 };
 
 
-export const backCardSheetRange = "'BackCard Template'!A2:N1002";
 
 export class BackCard extends Card {
   private opts: IBackCardOpts;

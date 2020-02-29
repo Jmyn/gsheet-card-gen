@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import fs from "fs";
 import { OAuth2Client } from 'google-auth-library/build/src/auth/oauth2client';
 import { Card } from "./Card/Card";
@@ -8,7 +10,7 @@ const OUTPUT_DIR = __dirname + '/output';
 
 
 async function generateCards(auth: OAuth2Client | string): Promise<Card[]> {
-  const factory = new CardFactory(auth, [CardType.BackCard, CardType.TextCard]);
+  const factory = new CardFactory(auth, [CardType.BackCard, CardType.TextCard], process.env.AP_SHEET_ID ?? '');
   return factory.generateCards();
 }
 

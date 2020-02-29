@@ -1,7 +1,7 @@
 import { Card, ICardOpts } from "./Card";
 import { OAuth2Client } from 'google-auth-library/build/src/auth/oauth2client';
-import { TextCard, rowToTextCardOpts, textCardSheetRange } from "./TextCard";
-import { BackCard, rowToBackCardOpts, backCardSheetRange } from "./BackCard";
+import { TextCard, rowToTextCardOpts } from "./TextCard";
+import { BackCard, rowToBackCardOpts } from "./BackCard";
 import { retrieveSheet } from "../google.api";
 
 export enum CardType {
@@ -26,29 +26,29 @@ const CardFactoryBlueprint: ICardFactoryBlueprint = {
   [CardType.TextCard]: {
     targetConstructor: TextCard,
     rowToOps: rowToTextCardOpts,
-    sheetRange: textCardSheetRange
+    sheetRange: process.env.TEXT_CARD_RANGE ?? ''
   },
   [CardType.BackCard]: {
     targetConstructor: BackCard,
     rowToOps: rowToBackCardOpts,
-    sheetRange: backCardSheetRange
+    sheetRange: process.env.BACK_CARD_RANGE ?? ''
   }
 };
-
-const AP_SHEET_ID = '1LHz2cNZJOJqT9gIic-RBy1TX4iLk8rRHZbk73Nrz1J4';
 
 export class CardFactory {
   private typesToGen: CardType[];
   private auth: OAuth2Client | string;
+  private AP_SHEET_ID: string
 
-  public constructor(auth: OAuth2Client | string, typesToGen: CardType[]) {
+  public constructor(auth: OAuth2Client | string, typesToGen: CardType[], AP_SHEET_ID: string) {
     this.typesToGen = typesToGen;
     this.auth = auth;
+    this.AP_SHEET_ID = AP_SHEET_ID;
   }
 
   private async generateCardsOfType(type: CardType): Promise<Card[]> {
     const blueprint = CardFactoryBlueprint[type];
-    const data = await retrieveSheet(this.auth, AP_SHEET_ID, blueprint.sheetRange);
+    const data = await retrieveSheet(this.auth, this.AP_SHEET_ID, blueprint.sheetRange);
 
     const rows = data.values;
     if (!rows?.length) {
