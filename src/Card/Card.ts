@@ -1,27 +1,42 @@
 import { Canvas } from "canvas";
+import {CardType} from "../types/types";
 
 const LINE_SPACING = 5;
-const DEFAULT_WIDTH = 400;
-const DEFAULT_HEIGHT = 600;
+export const DEFAULT_CARD_WIDTH = 400;
+export const DEFAULT_CARD_HEIGHT = 600;
 
 export interface ICardOpts {
   width?: number;
   height?: number;
   id: string;
   quantity: number;
+  type: CardType;
 }
 
 export abstract class Card {
-  protected width: number;
-  protected height: number;
+  public get category(): string {
+    return this._category;
+  }
+  public get height(): number {
+    return this._height;
+  }
+  public get width(): number {
+    return this._width;
+  }
+  protected _width: number;
+  protected _height: number;
   protected quantity: number;
+  protected _category: string;
+  protected type: CardType;
   private id: string;
 
   public constructor(opts?: ICardOpts) {
-    this.width = opts?.width ?? DEFAULT_WIDTH;
-    this.height = opts?.height ?? DEFAULT_HEIGHT;
+    this._width = opts?.width ?? DEFAULT_CARD_WIDTH;
+    this._height = opts?.height ?? DEFAULT_CARD_HEIGHT;
     this.id = opts?.id ?? 'default_id';
     this.quantity = opts?.quantity ?? 1;
+    this._category = this.id.split('_')[0];
+    this.type = opts?.type ?? CardType.TextCard;
   }
 
   public getId(): string {
@@ -31,6 +46,8 @@ export abstract class Card {
   public getQuantity(): number {
     return this.quantity;
   }
+
+  public abstract draw(canvas: Canvas, xOffset: number, yOffset: number): void;
 
   protected abstract create(): Canvas;
 
@@ -59,7 +76,7 @@ export abstract class Card {
       offset = offset ?? LINE_SPACING + metric.actualBoundingBoxAscent * 2;
       // console.log(`metric for ${curr + " " + word}: ${JSON.stringify(metric)}`);
       const width = metric.width;
-      if (width < this.width) {
+      if (width < this._width) {
         curr += " " + word;
       } else {
         lines.push(curr);
@@ -77,10 +94,10 @@ export abstract class Card {
   }
 
   protected x(fx: number): number {
-    return this.width * fx;
+    return this._width * fx;
   }
 
   protected y(fy: number): number {
-    return this.height * fy;
+    return this._height * fy;
   }
 }
