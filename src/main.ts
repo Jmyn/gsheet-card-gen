@@ -7,6 +7,7 @@ import { Card, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT } from "./Card/Card";
 import { authorize } from "./google.api";
 import { CardFactory, ICardFactoryOutput } from "./Card/CardFactory";
 import {CardType} from "./types/types";
+import {TTSSaveGenerator} from "./TTS/TTSSaveGenerator";
 
 const OUTPUT_DIR = __dirname + '/output';
 
@@ -115,6 +116,7 @@ async function generateCardsFromSheet(auth: OAuth2Client | string): Promise<void
   const cardFactoryOutput = await generateCards(auth);
   // writeCards(cards);
   writeCardSheet(cardFactoryOutput);
+  TTSSaveGenerator.generateSave('auctionplanet', OUTPUT_DIR);
   console.log('generateCardsFromSheet success, output to ', OUTPUT_DIR);
 }
 
