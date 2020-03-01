@@ -40,72 +40,74 @@ function writeCardSheet(cardFactoryOutput: ICardFactoryOutput[]): void {
     fs.mkdirSync(OUTPUT_DIR);
   }
 
-  const cardFronts = cardFactoryOutput.filter(cardFactoryOutput => cardFactoryOutput.type !== CardType.BackCard);
-  const totalCards = cardFronts.reduce((acc, cardFront) => acc + cardFront.cards.reduce((cardQuantities, card) => cardQuantities + card.getQuantity(), 0), 0);
+  const cardFronts = cardFactoryOutput.filter(cardFactoryOutput => cardFactoryOutput.type !== CardType.BackCard).reduce((acc: Card[], cardFront) => {
+    acc.push(...cardFront.cards);
+    return acc;
+  }, []);
+  const totalCards = cardFronts.reduce((cardQuantities, card) => cardQuantities + card.getQuantity(), 0); // cardFronts.reduce((acc, cardFront) => acc + , 0);
   const maxCardCountPerSheet = Math.min(CARD_SHEET_COLUMNS * CARD_SHEET_ROWS, MAX_CARD_COUNT);
-  const outputSheetCount = Math.ceil(totalCards / maxCardCountPerSheet);
+  // const outputSheetCount = Math.ceil(totalCards / maxCardCountPerSheet);
 
-  let currentCardCount = 0;
   let currentCardInSheet = 0;
-  let unprintedCardCount = totalCards;
+  let unprintedCardInCategoryCount = 0;
+  let currentCategorySheetIndex = 0;
+  let currentSheetCategory = '';
   let frontCanvas: Canvas | null;
   let backCanvas: Canvas | null;
-  let currentSheetIndex = 0;
-  console.log(`[DeckSheet] ${totalCards} cards to generate, ${outputSheetCount}*2 sheets will be generated`);
+  console.log(`[DeckSheet] ${totalCards} cards to generate`);
 
-  const outputSheet = () => {
+  const outputSheet = (): void => {
     if (frontCanvas && backCanvas) {
       const frontPNGBase64 = frontCanvas.toDataURL().replace(/^data:image\/png;base64,/, "");
       const backPNGBase64 = backCanvas.toDataURL().replace(/^data:image\/png;base64,/, "");
-      fs.writeFileSync(OUTPUT_DIR + `/front-${currentSheetIndex}.png`, frontPNGBase64, 'base64');
-      fs.writeFileSync(OUTPUT_DIR + `/back-${currentSheetIndex}.png`, backPNGBase64, 'base64');
-      currentSheetIndex++;
-      unprintedCardCount -= currentCardInSheet;
+      fs.writeFileSync(OUTPUT_DIR + `/${currentSheetCategory}-front-${currentCategorySheetIndex}-${currentCardInSheet}.png`, frontPNGBase64, 'base64');
+      fs.writeFileSync(OUTPUT_DIR + `/${currentSheetCategory}-back-${currentCategorySheetIndex}-${currentCardInSheet}.png`, backPNGBase64, 'base64');
+      currentCategorySheetIndex++;
+      unprintedCardInCategoryCount -= currentCardInSheet;
       currentCardInSheet = 0;
       frontCanvas = null;
       backCanvas = null;
     }
   };
 
-  const generateCanvas = () => {
+  const generateCanvas = (): void => {
     if (!frontCanvas || !backCanvas) {
       // Create a new canvas with a resolution based on how many cards are left
-      const cardsInNextSheet = Math.min(maxCardCountPerSheet, unprintedCardCount);
+      const cardsInNextSheet = Math.min(maxCardCountPerSheet, unprintedCardInCategoryCount);
       const columns = cardsInNextSheet >= CARD_SHEET_COLUMNS ? CARD_SHEET_COLUMNS : cardsInNextSheet;
       const rows = Math.ceil(cardsInNextSheet / CARD_SHEET_COLUMNS);
       const width = DEFAULT_CARD_WIDTH * columns;
       const height = DEFAULT_CARD_HEIGHT * rows;
-      console.log(`[DeckSheet] Generating sheet ${currentSheetIndex}: ${width}x${height} | ${columns}x${rows} | ${cardsInNextSheet} cards`);
+      console.log(`[DeckSheet] Generating sheet for ${currentSheetCategory} (${currentCategorySheetIndex}): ${width}x${height} | ${columns}x${rows} | ${cardsInNextSheet} cards`);
       frontCanvas = createCanvas(width, height);
       backCanvas = createCanvas(width, height);
       currentCardInSheet = 0;
     }
   };
 
-  cardFronts.forEach((cardFront) => {
-    const cards = cardFront.cards;
-    cards.forEach(card => {
+  // Generate sheets organised by card category (identified using card backs)
+  cardBacks.cards.forEach((cardBack) => {
+    const cardsInCategory = cardFronts.filter((cardFront)=>cardFront.category.toLowerCase() === cardBack.getId().toLowerCase());
+    const cardsInCategoryCount = cardsInCategory.reduce((cardQuantities, card) => cardQuantities + card.getQuantity(), 0);
+    currentSheetCategory = cardBack.category.toLowerCase();
+    currentCategorySheetIndex = 0;
+    unprintedCardInCategoryCount = cardsInCategoryCount;
+    cardsInCategory.forEach(card => {
       for (let i=0; i<card.getQuantity(); i++) {
         generateCanvas();
         if (frontCanvas) card.draw(frontCanvas, (currentCardInSheet % CARD_SHEET_COLUMNS) * card.width, Math.floor(currentCardInSheet / CARD_SHEET_COLUMNS) * card.height);
-        const backCard = cardBacks.cards.find((backCard) => backCard.getId().toLowerCase() === card.category.toLowerCase());
-        if (backCard && backCanvas) {
-          backCard.draw(backCanvas, (currentCardInSheet % CARD_SHEET_COLUMNS) * card.width, Math.floor(currentCardInSheet / CARD_SHEET_COLUMNS) * card.height);
-        } else {
-          console.warn(`[DeckSheet] Could not find back card for "${card.getId()}"`);
-        }
+        if (backCanvas) cardBack.draw(backCanvas, (currentCardInSheet % CARD_SHEET_COLUMNS) * card.width, Math.floor(currentCardInSheet / CARD_SHEET_COLUMNS) * card.height);
         currentCardInSheet++;
-        currentCardCount++;
 
         if (currentCardInSheet >= maxCardCountPerSheet) {
           outputSheet();
         }
       }
     });
+    if (unprintedCardInCategoryCount > 0) {
+      outputSheet();
+    }
   });
-  if (unprintedCardCount > 0) {
-    outputSheet();
-  }
   console.log(`[DeckSheet] Done!`);
 }
 
