@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import url from "url";
 import _ from "lodash";
 
 const TABLETOP_SIMULATOR_SAVE_TEMPLATE = {
@@ -434,21 +435,27 @@ export class TTSSaveGenerator {
     return guid;
   }
 
-  static generateSave(saveName: string, saveFolder: string) {
+  static generateSaveFromUrls(saveName: string, saveFolder: string, sheetUrls: string[]) {
+    const sheetFrontUrls = sheetUrls.filter((fileName) => fileName.indexOf('-front-') >= 0);
+    const cardSheets = sheetFrontUrls.map((sheetUrl) => {
+      const pathname = url.parse(sheetUrl).pathname;
+      return pathname ? pathname.split('/').slice(-1)[0] : '';
+    });
+    this.generateSave(saveName, saveFolder, sheetUrls, cardSheets);
+  }
+
+  static generateSave(saveName: string, saveFolder: string, fullPaths: string[], sheetNames: string[]) {
     const saveObject: any | typeof TABLETOP_SIMULATOR_SAVE_TEMPLATE = Object.assign({}, _.cloneDeep(TABLETOP_SIMULATOR_SAVE_TEMPLATE));
     saveObject.SaveName = saveName;
 
-    const fileNames = fs.readdirSync(saveFolder);
-    const cardSheets = fileNames.filter((fileName) => fileName.endsWith('.png') && fileName.indexOf('-front-') >= 0).sort();
-    console.log(`[DeckSheet] Card sheets `, cardSheets);
-    saveObject.ObjectStates = cardSheets.map((cardSheet, deckIndex) => {
+    saveObject.ObjectStates = sheetNames.map((cardSheet, deckIndex) => {
       const deckObject: any | typeof DECK_TEMPLATE = Object.assign({}, _.cloneDeep(DECK_TEMPLATE));
       const deckCardCount = parseInt(cardSheet.split('.')[0].split('-').slice(-1)[0]);
       deckObject.Name = 'DeckCustom';
       deckObject.Transform.posX += deckIndex * 2.5;
       deckObject.DeckIDs = Array.from(Array(deckCardCount), (e, i) => 100 + i);
-      deckObject.CustomDeck["1"].FaceURL = `file:///${path.join(saveFolder, cardSheet)}`;
-      deckObject.CustomDeck["1"].BackURL = `file:///${path.join(saveFolder, cardSheet).replace('-front-', '-back-')}`;
+      deckObject.CustomDeck["1"].FaceURL = fullPaths[deckIndex * 2];
+      deckObject.CustomDeck["1"].BackURL = fullPaths[deckIndex * 2 + 1];
       deckObject.CustomDeck["1"].NumWidth = Math.min(10, deckCardCount);
       deckObject.CustomDeck["1"].NumHeight = Math.ceil(deckCardCount / 10);
       deckObject.GUID = this.generateGUID();
@@ -463,6 +470,17 @@ export class TTSSaveGenerator {
     });
     const saveJSON = JSON.stringify(saveObject);
     fs.writeFileSync(path.join(saveFolder, `TS_Save_${saveName}.json`), saveJSON, 'utf8');
+    return;
+  }
+
+  static generateSaveFromFolder(saveName: string, saveFolder: string) {
+    const saveObject: any | typeof TABLETOP_SIMULATOR_SAVE_TEMPLATE = Object.assign({}, _.cloneDeep(TABLETOP_SIMULATOR_SAVE_TEMPLATE));
+    saveObject.SaveName = saveName;
+
+    const fileNames = fs.readdirSync(saveFolder);
+    const cardSheets = fileNames.filter((fileName) => fileName.endsWith('.png') && fileName.indexOf('-front-') >= 0);
+    const sheetUrls = fileNames.map((cardSheet) => `file:///${path.join(saveFolder, cardSheet)}`);
+    this.generateSave(saveName, saveFolder, sheetUrls, cardSheets);
     return;
   }
 }

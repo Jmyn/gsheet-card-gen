@@ -8,6 +8,7 @@ import { authorize } from "./google.api";
 import { CardFactory, ICardFactoryOutput } from "./Card/CardFactory";
 import {CardType} from "./types/types";
 import {TTSSaveGenerator} from "./TTS/TTSSaveGenerator";
+import {DropboxUploader} from "./dropbox.api";
 
 const OUTPUT_DIR = __dirname + '/output';
 
@@ -32,7 +33,7 @@ function writeCards(cards: Card[]): void {
   });
 }
 
-function writeCardSheet(cardFactoryOutput: ICardFactoryOutput[]): void {
+function writeCardSheet(cardFactoryOutput: ICardFactoryOutput[]): string[] {
   const cardBacks = cardFactoryOutput.find(cardFactoryOutput => cardFactoryOutput.type === CardType.BackCard);
   if (!cardBacks) {
     throw new Error("[Error] Card backs could not be found");
@@ -48,6 +49,7 @@ function writeCardSheet(cardFactoryOutput: ICardFactoryOutput[]): void {
   const totalCards = cardFronts.reduce((cardQuantities, card) => cardQuantities + card.getQuantity(), 0); // cardFronts.reduce((acc, cardFront) => acc + , 0);
   const maxCardCountPerSheet = Math.min(CARD_SHEET_COLUMNS * CARD_SHEET_ROWS, MAX_CARD_COUNT);
   // const outputSheetCount = Math.ceil(totalCards / maxCardCountPerSheet);
+  const generatedFilenames: string[] = [];
 
   let currentCardInSheet = 0;
   let unprintedCardInCategoryCount = 0;
@@ -61,8 +63,11 @@ function writeCardSheet(cardFactoryOutput: ICardFactoryOutput[]): void {
     if (frontCanvas && backCanvas) {
       const frontPNGBase64 = frontCanvas.toDataURL().replace(/^data:image\/png;base64,/, "");
       const backPNGBase64 = backCanvas.toDataURL().replace(/^data:image\/png;base64,/, "");
-      fs.writeFileSync(OUTPUT_DIR + `/${currentSheetCategory}-front-${currentCategorySheetIndex}-${currentCardInSheet}.png`, frontPNGBase64, 'base64');
-      fs.writeFileSync(OUTPUT_DIR + `/${currentSheetCategory}-back-${currentCategorySheetIndex}-${currentCardInSheet}.png`, backPNGBase64, 'base64');
+      const frontFilename = `${OUTPUT_DIR}/${currentSheetCategory}-front-${currentCategorySheetIndex}-${currentCardInSheet}.png`;
+      const backFilename = `${OUTPUT_DIR}/${currentSheetCategory}-back-${currentCategorySheetIndex}-${currentCardInSheet}.png`;
+      fs.writeFileSync(frontFilename, frontPNGBase64, 'base64');
+      fs.writeFileSync(backFilename, backPNGBase64, 'base64');
+      generatedFilenames.push(frontFilename, backFilename);
       currentCategorySheetIndex++;
       unprintedCardInCategoryCount -= currentCardInSheet;
       currentCardInSheet = 0;
@@ -110,13 +115,43 @@ function writeCardSheet(cardFactoryOutput: ICardFactoryOutput[]): void {
     }
   });
   console.log(`[DeckSheet] Done!`);
+  return generatedFilenames;
+}
+
+async function uploadImages(filenames: string[]) {
+  const dropboxUploader = new DropboxUploader(process.env.DROPBOX_ACCESS_TOKEN || '');
+  const results = [];
+  for (let i=0; i < filenames.length; i++) {
+    try {
+      results.push(await dropboxUploader.uploadFile(process.env.GAME_NAME || '', filenames[i]));
+    } catch (exception) {
+      console.log('Exception pushing upload result:', exception);
+    }
+  }
+  console.log('[DeckSheet] Upload complete');
+  let urls: string[] = [];
+  try {
+    urls = (await Promise.all(
+      results.map((result) => {
+        if (!result) {
+          return '';
+        }
+        return dropboxUploader.getLink(result.path_lower || '');
+      }))).map(url => url.replace('?dl=0', '?raw=1'));
+    console.log(urls);
+  } catch (exception) {
+    console.log('Exception awaiting link', exception);
+  }
+  return urls;
 }
 
 async function generateCardsFromSheet(auth: OAuth2Client | string): Promise<void> {
   const cardFactoryOutput = await generateCards(auth);
   // writeCards(cards);
-  writeCardSheet(cardFactoryOutput);
-  TTSSaveGenerator.generateSave('auctionplanet', OUTPUT_DIR);
+  const sheetFilenames = writeCardSheet(cardFactoryOutput);
+  const sheetUrls = await uploadImages(sheetFilenames);
+
+  TTSSaveGenerator.generateSaveFromUrls(process.env.GAME_NAME || '', OUTPUT_DIR, sheetUrls);
   console.log('generateCardsFromSheet success, output to ', OUTPUT_DIR);
 }
 
